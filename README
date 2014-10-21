@@ -1,0 +1,50 @@
+A description of the scripts in this directory.
+By: Daniel Xu (danielxu@lbl.gov)
+Last edit: 2014-10-21
+
+Script directory: ~/scripts
+
+MAIN SCRIPTS:
+
+    DESCRIPTION:
+    The three most important scripts:
+
+    1. ion_get_data.py (getter)
+    Given an input file of information on desired meters, pulls meter data
+    from the ION database.
+
+    2. jci_get_data.py (getter)
+    Same as above script, except for JCI meters. Note that the input file
+    has a different structure (details found in usage)
+
+    3. load_data_files.py (loader)
+    Loads data pulled from the JCI and ION data getter scripts into the
+    Postgres database holding building energy data. Note that the extracted
+    data is of a specific format independent of database source.
+
+
+    USAGE DETAILS:
+    Run the getter script(s) to get desired data. Next run the loader script
+    to import the extracted data into the Postgres database.
+
+    For now, it is assumed that the information provided in the input files
+    for the getter scripts pertain to new meters, i.e. meters for which the
+    data is being pulled for the first time. Furthermore, the time period
+    for meter readings must be specified in advance.
+
+    A possible addition would be an 'updater' script that given a meter in
+    the Postgres database would fetch new readings for that meter.
+
+
+
+OTHER SCRIPTS:
+
+    ion_run_sql.py
+    jci_run_sql.py
+
+    DESCRIPTION:
+    Both scripts simply run the SQL in an input file on the corresponding
+    database. The path to the SQL file musts be specified. Generally, the
+    SQLs are located in the ~/sql directory
+
+
