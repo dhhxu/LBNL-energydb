@@ -1,7 +1,7 @@
 #LBNL Building Energy Database Project
 
-
 **Script directory:** ~/scripts
+
 **Data directory:** ~/data
 
 ##Main scripts:
@@ -33,7 +33,9 @@ data is being pulled for the first time. Furthermore, the time period
 for meter readings must be specified in advance.
 
 Example usage:
+
 `ion_get_data.py YOUR_INFO_FILE.csv`
+
 `load_data_files.py` (using default arguments)
 
 ---
@@ -48,8 +50,9 @@ Both scripts simply run a SQL statement contained in an input file on the
 corresponding database. The full path to the SQL file must be specified.
 Generally, the input files are located in the ~/sql directory.
 
-Example usage: `python ion_run_sql.py YOUR_SQL_FILE.sql`
+Example usage: 
+
+`python ion_run_sql.py YOUR_SQL_FILE.sql`
 
 
-**Last updated on:** 2015-04-10
-**Author:** Daniel Xu (danielxu@lbl.gov)
+**Last updated:** 2015-04-10
