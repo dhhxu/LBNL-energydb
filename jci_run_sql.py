@@ -1,12 +1,21 @@
-import pyodbc, sys, os
+#!/usr/bin/env python
 
-# variables
-db = "metasys"
-user = "EETD"
-pwd = os.getenv('KFAJCIPASS')
+"""
+Runs the SQL query from a user-supplied input file on the JCI database and
+prints the results.
+"""
+
+import pyodbc
+import sys
+import os
+import util
+
+db = util.METASYS_DB
+user = util.METASYS_USER
+pwd = util.METASYS_PWD
 
 def usage():
-    print("USAGE:\n\tpython run_sql.py [YOUR SQL file]\n")
+    print("USAGE:\n\tpython jci_run_sql.py [YOUR SQL file]\n")
 
 def main():
     if len(sys.argv) < 2:
@@ -18,12 +27,10 @@ def main():
 
     f = open(sys.argv[1], 'r')
     my_sql = f.read()
-    print(my_sql)
     cursor.execute(my_sql)
 
     for r in cursor:
-        print r
-
+        print(r)
 
     cursor.close()
     del cursor

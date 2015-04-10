@@ -1,46 +1,32 @@
+#!/usr/bin/env python
+
+"""
+Loads the energy data csv files acquired through the loader scripts
+(ion_get_data.py or jci_get_data.py), and inserts them into the Postgres
+energy database.
+"""
+
+import csv
+import os
 import pyodbc
 import sys
-import os
-import csv
-from shutil import move
+import util
 
-# variables
-db = "energydb"
-user = "danielxu"
-pwd = os.getenv('ENERGYDBPASS')
+db = util.PG_DB
+user = util.PG_USER
+pwd = uti.PG_PWD
 
 # Default data directory if none is supplied at script invocation.
-DEFAULT_DATA_DIR = "/home/danielxu/data/data_files/"
+DEFAULT_DATA_DIR = util.DATA_OUTPUT_FILE_PATH
 
 # Default processed data directory if none is supplied at script invocation.
 DEFAULT_PROCESSED_DIR = DEFAULT_DATA_DIR + "processed/"
-
-def done():
-    """
-    Print 'done'
-    """
-    print("done")
-
-def fail():
-    """
-    Print 'FAIL'
-    """
-    print("FAIL")
 
 def tryNext():
     """
     Print 'Trying next meter in list ...'
     """
     print("\nTrying next meter in list ...")
-
-def move(src, dst):
-    """
-    Moves file whose path is SRC to directory whose path is DST. Both SRC and
-    DST must exist.
-    """
-    print("Moving file '%s' to directory '%s' ..." % (src, dst)),
-    move(src, dst)
-    done()
 
 def exec_and_commit(my_cursor, sql_stmt):
     """
@@ -57,35 +43,14 @@ def drop_tmp_table(my_cursor, table_name):
     print("Deleting temporary table '%s' ..." % (table_name)),
     dele_sql = "DROP TABLE IF EXISTS %s" % (table_name)
     exec_and_commit(my_cursor, dele_sql)
-    done()
-
-def close_cnxn(my_cursor, my_cnxn):
-    """
-    Close connection MY_CNXN, delete and close cursor MY_CURSOR.
-    """
-    print("Closing cursor ..."),
-    my_cursor.close()
-    done()
-    print("Deleting cursor ..."),
-    del my_cursor
-    done()
-    print("Closing connection ..."),
-    my_cnxn.close()
-    done()
-
-def abort(my_cursor, my_cnxn):
-    """
-    Closes connection and quits script execution in case of SQL error.
-    """
-    close_cnxn(my_cursor, my_cnxn)
-    exit()
+    util.done()
 
 def get_data_files(datadir):
     """
     Return a list of the absolute path to the files in DATADIR.
     """
-    return [ os.path.join(datadir, f) for f in os.listdir(datadir)
-        if os.path.isfile(os.path.join(datadir, f)) ] 
+    return [os.path.join(datadir, f) for f in os.listdir(datadir)
+        if os.path.isfile(os.path.join(datadir, f))]
 
 def get_header(data_file):
     """
@@ -168,10 +133,8 @@ def load(data_file, mycursor, process_dir):
         print("NOTE! Meter ID (%d) created for '%s'" % (meter_id, data_file))
         return 1
     else:
-        move(data_file, process_dir)
+        util.move(data_file, process_dir)
         return 0
-
-# HELPER METHODS FOR LOAD()
 
 def get_id(item, table, field, mycursor):
     """
@@ -183,19 +146,19 @@ def get_id(item, table, field, mycursor):
     mycursor.execute(sql)
     result = mycursor.fetchone()
     if (not result):
-        fail()
+        util.fail()
         return -1
     else:
-        done()
+        util.done()
         return result.id
 
 def load_ids(id_list, mycursor):
     """
-    # Insert ID list ID_LIST into the 'meter' table and return the meter ID
-    # created by the insertion. Returns -1 in case of failure.
-    # The order of ID_LIST is as follows:
-    # [ description, unit_id, commodity_id, source_system_id, reading_type_id ]
-    # Uses cursor MYCURSOR.
+    Insert ID list ID_LIST into the 'meter' table and return the meter ID
+    created by the insertion. Returns -1 in case of failure.
+    The order of ID_LIST is as follows:
+    [ description, unit_id, commodity_id, source_system_id, reading_type_id ]
+    Uses cursor MYCURSOR.
     """
     sql = """
         INSERT INTO meter
@@ -213,10 +176,10 @@ def load_ids(id_list, mycursor):
     try:
         exec_and_commit(mycursor, sql)
         result = mycursor.fetchone()
-        done()
+        util.done()
         return result.id
     except pyodbc.Error, get_meter_id_err:
-        fail()
+        util.fail()
         print(get_meter_id_err)
         return -1
 
@@ -264,10 +227,10 @@ def create_temp_table(table_name, mycursor):
     """ % (table_name)
     try:
         exec_and_commit(mycursor, sql)
-        done()
+        util.done()
         return True
     except pyodbc.Error, create_tbl_err:
-        fail()
+        util.fail()
         print(create_tbl_err)
         return False
     
@@ -289,10 +252,10 @@ def copy_data(data_file, table, mycursor):
     """ % (table, data_file)
     try:
         exec_and_commit(mycursor, sql)
-        done()
+        util.done()
         return True
     except pyodbc.Error, copy_err:
-        fail()
+        util.fail()
         print(copy_err)
         return False
 
@@ -305,10 +268,10 @@ def add_id_col(m_id, table, mycursor):
     sql = "ALTER TABLE %s ADD COLUMN id INTEGER DEFAULT %d" % (table, m_id)
     try:
         exec_and_commit(mycursor, sql)
-        done()
+        util.done()
         return True
     except pyodbc.Error, add_col_err:
-        fail()
+        util.fail()
         print(add_col_err)
         return False
 
@@ -324,10 +287,10 @@ def insert_table(table, mycursor):
     """ % (table)
     try:
         exec_and_commit(mycursor, sql)
-        done()
+        util.done()
         return True
     except pyodbc.Error, insert_table_err:
-        fail()
+        util.fail()
         print(insert_table_err)
         return False
 
@@ -381,14 +344,14 @@ def main():
         cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (db, user, pwd)
         print("Connecting to database ..."),
         cnxn = pyodbc.connect(cnxn_str)
-        done()
+        util.done()
     except pyodbc.Error, conn_err:
-        fail()
+        util.fail()
         print(conn_err)
         exit()
     cursor = cnxn.cursor()
     load_files(data_files, cursor, processed_dir)
-    close_cnxn(cursor, cnxn)
+    util.close_cnxn(cursor, cnxn)
 
 if __name__ == "__main__":
     main()

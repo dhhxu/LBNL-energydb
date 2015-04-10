@@ -1,68 +1,27 @@
 #!/usr/bin/python
 
-import pyodbc
-import os
+"""
+Takes an input file (details in usage()) containing information about what
+energy data is requested and pulls that data from the ION database. The
+extracted data is saved in csv form in the ~/data directory.
+"""
+
 import csv
+import os
+import pyodbc
 import sys
+import util
 
-#variables
-DB = "ion"
-USER = "EETD"
-PASSWD = os.getenv('KFAIONPASS')
-
-# directory where meter data files are saved to.
-DATA_OUTPUT_FILE_PATH = "/home/danielxu/data/data_files/"
-
-# default meter info file header length
-DEFAULT_LINE_LEN = 4
-
-def done():
-    """
-    Print 'done'
-    """
-    print("done")
-
-def fail():
-    """
-    Print 'FAIL'
-    """
-    print("FAIL")
-
-def tryNext():
-    """
-    Print a message indicating program is skipping over current Source ID and
-    going to the next one (due to some error).
-    """
-    print("Going to next Source ID in input file ...")
-
-def close_cnxn(my_cursor, my_cnxn):
-    """
-    Close connection MY_CNXN, delete and close cursor MY_CURSOR.
-    """
-    print("Closing cursor ..."),
-    my_cursor.close()
-    done()
-    print("Deleting cursor ..."),
-    del my_cursor
-    done()
-    print("Closing connection ..."),
-    my_cnxn.close()
-    done()
-
-def abort(my_cursor, my_cnxn):
-    """
-    Abort -- close connection MY_CNXN, delete and close cursor MY_CURSOR,
-    and exit the script.
-    """
-    close_cnxn(my_cursor, my_cnxn)
-    exit()
+DB = util.ION_DB
+USER = util.ION_USER
+PASSWD = util.ION_PWD
 
 def hasHeader(line):
     """
     Returns TRUE if LINE is a correct header.
     """
     line_len = len(line)
-    if (line_len != DEFAULT_LINE_LEN):
+    if (line_len != util.DEFAULT_LINE_LEN):
         return False
     else:
         if (line[0] != "SourceID" or line[1] != "QuantityID"
@@ -80,7 +39,7 @@ def get_meter_list(extract_file):
         reader = csv.reader(extract_info_file)
         meter_list = [ row for row in reader ]
         if (not hasHeader(meter_list[0])):
-            raise ValueError("ERROR: Incorrect/Missing header\n")
+            raise ValueError("ERROR: Incorrect/Missing header.\n")
         del meter_list[0]
         return meter_list
 
@@ -96,9 +55,9 @@ def extract_meter_data( extract_file ):
         print("Connecting to database ..."),
         cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (DB, USER, PASSWD)
         cnxn = pyodbc.connect(cnxn_str)
-        done()
+        util.done()
     except pyodbc.Error, connect_err:
-        fail()
+        util.fail()
         print(connect_err)
         exit()
     cursor = cnxn.cursor()
@@ -107,7 +66,7 @@ def extract_meter_data( extract_file ):
     except ValueError, badHeader:
         print(badHeader)
         usage()
-        abort(cursor, cnxn)
+        util.abort(cursor, cnxn)
     
     print("Begin data extraction ...\n")
     err_count = 0
@@ -119,7 +78,7 @@ def extract_meter_data( extract_file ):
         print("No errors encountered.")
     else:
         print("%d of %d IDs failed to process" % (err_count, total))
-    close_cnxn(cursor, cnxn)
+    util.close_cnxn(cursor, cnxn)
 
 def extract(mtr_row, my_cursor, my_cnxn):
     """
@@ -136,29 +95,18 @@ def extract(mtr_row, my_cursor, my_cnxn):
     print("Processing Source ID: %d" % (meter_id))
     
     description = get_description(meter_id, my_cursor)
-    if (description is None):
-        tryNext()
-        return 1
-    unit = get_unit(get_quantity_name(quantity_id, my_cursor))
-    if (unit is None):
-        tryNext()
-        return 1
-    commodity = get_commodity(unit)
-    if (commodity is None):
-        tryNext()
-        return 1
-    reading_type = get_reading_type(meter_id, quantity_id, start, end
-        , my_cursor)
-    if (reading_type is None):
-        tryNext()
-        return 1
-    if (not get_readings(meter_id, quantity_id, start, end)):
-        tryNext()
+    if (not description
+        or not get_unit(get_quantity_name(quantity_id, my_cursor))
+        or not get_commodity(unit)
+        or not get_reading_type(meter_id, quantity_id, start, end, my_cursor)
+        or not get_readings(meter_id, quantity_id, start, end)):
+        util.tryNext()
         return 1
 
     output_filename = (DB.upper() + "_" + str(meter_id) + "_"
         + start + "_" + end + ".csv")
-    output_path = DATA_OUTPUT_FILE_PATH + output_filename
+
+    output_path = util.DATA_OUTPUT_FILE_PATH + output_filename
 
     with open(output_path, "wb") as output_file:
         writer = csv.writer(output_file, delimiter=',')
@@ -183,16 +131,16 @@ def get_description(meter_id, my_cursor):
     try:
         my_cursor.execute(get_description_sql)
     except pyodbc.Error, meter_name_err:
-        fail()
+        util.fail()
         print(meter_name_err)
         return None
     description_result = my_cursor.fetchone()
     if (not description_result):
-        fail()
+        util.fail()
         print("ERROR! Description not found!")
         return None
     else:
-        done()
+        util.done()
         return description_result.Name
 
 def get_quantity_name(quantity_id, my_cursor):
@@ -273,19 +221,19 @@ def get_reading_type(meter_id, quantity_id, start_date, end_date, my_cursor):
     try:
         my_cursor.execute(monotonic_sql)
     except pyodbc.Error, monotonic_err:
-        fail()
+        util.fail()
         print(monotonic_err)
         return None
     monotoneResult = my_cursor.fetchone().IsMonotone
     if (monotoneResult is None):
-        fail()
+        util.fail()
         print("ERROR: Reading type cannot be determined")
         return None
     elif (monotoneResult == 0):
         reading_type = "Interval"
     else:
         reading_type = "Totalization"
-    done()
+    util.done()
     return reading_type
 
 def get_readings(meter_id, quantity_id, start_date, end_date):
@@ -306,10 +254,10 @@ def get_readings(meter_id, quantity_id, start_date, end_date):
     print("Getting meter readings ..."),
     try:
         my_cursor.execute(get_data_sql)
-        done()
+        util.done()
         return True
     except pyodbc.Error, get_data_err:
-        fail()
+        util.fail()
         print(get_data_err)
         return False
 
@@ -322,11 +270,10 @@ def usage():
     print("       to extract reading data from the ION datasource\n")
     print("    -- The absolute path to FILE.csv must be specified.")
     print("\nThe structure of FILE.csv is as follows:")
-    print("File must have a header line EXACTLY as follows:")
-    print("SourceID, QuantityID, start_date, end_date")
-    print("Rows in this file must be in the form dictated by the header " \
-        "above")
-    print
+    print("File must have a header line EXACTLY as follows:\n")
+    print("    SourceID, QuantityID, start_date, end_date")
+    print("\nRows in this file must be in the form dictated by the header "
+          "above.\n")
 
 def main():
     arg_len = len(sys.argv)
