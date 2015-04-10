@@ -1,4 +1,8 @@
-import pyodbc, sys, os, csv, shutil
+import pyodbc
+import sys
+import os
+import csv
+from shutil import move
 
 # variables
 db = "energydb"
@@ -11,40 +15,54 @@ DEFAULT_DATA_DIR = "/home/danielxu/data/data_files/"
 # Default processed data directory if none is supplied at script invocation.
 DEFAULT_PROCESSED_DIR = DEFAULT_DATA_DIR + "processed/"
 
-# Print 'done'
 def done():
+    """
+    Print 'done'
+    """
     print("done")
 
-# Print 'FAIL'
 def fail():
+    """
+    Print 'FAIL'
+    """
     print("FAIL")
 
-# Print 'Trying next meter in list ...'
 def tryNext():
+    """
+    Print 'Trying next meter in list ...'
+    """
     print("\nTrying next meter in list ...")
 
-# Moves file whose path is SRC to directory whose path is DST. Both SRC and
-# DST must exist.
 def move(src, dst):
+    """
+    Moves file whose path is SRC to directory whose path is DST. Both SRC and
+    DST must exist.
+    """
     print("Moving file '%s' to directory '%s' ..." % (src, dst)),
-    shutil.move(src, dst)
+    move(src, dst)
     done()
 
-# Execute SQL_STMT with cursor MY_CURSOR and commit the changes.
-# Use this for operations that write to the database.
 def exec_and_commit(my_cursor, sql_stmt):
+    """
+    Execute SQL_STMT with cursor MY_CURSOR and commit the changes.
+    Use this for operations that write to the database.
+    """
     my_cursor.execute(sql_stmt)
     my_cursor.commit()
 
-# Drop temporary table TABLE_NAME using cursor MY_CURSOR.
 def drop_tmp_table(my_cursor, table_name):
+    """
+    Drop temporary table TABLE_NAME using cursor MY_CURSOR.
+    """
     print("Deleting temporary table '%s' ..." % (table_name)),
     dele_sql = "DROP TABLE IF EXISTS %s" % (table_name)
     exec_and_commit(my_cursor, dele_sql)
     done()
 
-# Close connection MY_CNXN, delete and close cursor MY_CURSOR.
 def close_cnxn(my_cursor, my_cnxn):
+    """
+    Close connection MY_CNXN, delete and close cursor MY_CURSOR.
+    """
     print("Closing cursor ..."),
     my_cursor.close()
     done()
@@ -55,20 +73,26 @@ def close_cnxn(my_cursor, my_cnxn):
     my_cnxn.close()
     done()
 
-# Closes connection and quits script execution in case of SQL error.
 def abort(my_cursor, my_cnxn):
+    """
+    Closes connection and quits script execution in case of SQL error.
+    """
     close_cnxn(my_cursor, my_cnxn)
     exit()
 
-# Return a list of the absolute path to the files in DATADIR.
 def get_data_files(datadir):
+    """
+    Return a list of the absolute path to the files in DATADIR.
+    """
     return [ os.path.join(datadir, f) for f in os.listdir(datadir)
         if os.path.isfile(os.path.join(datadir, f)) ] 
 
-# Return DATA_FILE's header as a list. The elements of the list is as follows:
-# DESCRIPTION, ORIGINAL UNIT, COMMODITY, SOURCE SYSTEM NAME, READING TYPE
-# NOTE: call this ONLY once per data file.
 def get_header(data_file):
+    """
+    Return DATA_FILE's header as a list. The elements of the list is as follows:
+    DESCRIPTION, ORIGINAL UNIT, COMMODITY, SOURCE SYSTEM NAME, READING TYPE
+    NOTE: call this ONLY once per data file.
+    """
     with open(data_file, "rb") as f:
         reader = csv.reader(f)
         header = reader.next()
@@ -76,10 +100,12 @@ def get_header(data_file):
             raise ValueError("Incorrect file header")
         return header
 
-# Load the data files in FILE_LIST into the database with cursor MYCURSOR
-# Data files are moved to PROCESS_DIR if they are
-# loaded successfully.
 def load_files(file_list, mycursor, process_dir):
+    """
+    Load the data files in FILE_LIST into the database with cursor MYCURSOR
+    Data files are moved to PROCESS_DIR if they are
+    loaded successfully.
+    """
     file_count = len(file_list)
     err_count = 0
     for f in file_list:
@@ -92,12 +118,14 @@ def load_files(file_list, mycursor, process_dir):
         print("%d of %d files could not be loaded into the database\n"
                 % (err_count, file_count))
 
-# Loads the contents of DATA_FILE's header into the 'meter' table.
-# Also loads the readings in the file into the 'meter_value' table.
-# Afterwards, moves DATA_FILE to PROCESS_DIR.
-# Returns 0 if successful, 1 on error.
-# Uses cursor MYCURSOR 
 def load(data_file, mycursor, process_dir):
+    """
+    Loads the contents of DATA_FILE's header into the 'meter' table.
+    Also loads the readings in the file into the 'meter_value' table.
+    Afterwards, moves DATA_FILE to PROCESS_DIR.
+    Returns 0 if successful, 1 on error.
+    Uses cursor MYCURSOR.
+    """
     try:
         header = get_header(data_file)
     except ValueError, badHeader:
@@ -145,9 +173,11 @@ def load(data_file, mycursor, process_dir):
 
 # HELPER METHODS FOR LOAD()
 
-# Returns the ID from table TABLE whose FIELD is "ilike" to ITEM. Uses
-# cursor MYCURSOR. If no ID is found, returns -1.
 def get_id(item, table, field, mycursor):
+    """
+    Returns the ID from table TABLE whose FIELD is "ilike" to ITEM. Uses
+    cursor MYCURSOR. If no ID is found, returns -1.
+    """
     sql = "SELECT id FROM %s WHERE %s ILIKE '%s' LIMIT 1" % (table, field, item) 
     print("Getting %s ID ..." % (table)),
     mycursor.execute(sql)
@@ -159,12 +189,14 @@ def get_id(item, table, field, mycursor):
         done()
         return result.id
 
-# Insert ID list ID_LIST into the 'meter' table and return the meter ID
-# created by the insertion. Returns -1 in case of failure.
-# The order of ID_LIST is as follows:
-# [ description, unit_id, commodity_id, source_system_id, reading_type_id ]
-# Uses cursor MYCURSOR.
 def load_ids(id_list, mycursor):
+    """
+    # Insert ID list ID_LIST into the 'meter' table and return the meter ID
+    # created by the insertion. Returns -1 in case of failure.
+    # The order of ID_LIST is as follows:
+    # [ description, unit_id, commodity_id, source_system_id, reading_type_id ]
+    # Uses cursor MYCURSOR.
+    """
     sql = """
         INSERT INTO meter
         (
@@ -188,10 +220,12 @@ def load_ids(id_list, mycursor):
         print(get_meter_id_err)
         return -1
 
-# Insert reading values into the 'meter_value' table from DATA_FILE for a meter
-# with id M_ID. Returns TRUE if successful, FALSE otherwise.
-# Uses cursor MYCURSOR.
 def load_values(m_id, data_file, mycursor):
+    """
+    Insert reading values into the 'meter_value' table from DATA_FILE for a
+    meter with id M_ID. Returns TRUE if successful, FALSE otherwise.
+    Uses cursor MYCURSOR.
+    """
     print("Begin inserting readings into 'meter_value' table ...\n")
     tbl = "tmp_%d" % (m_id)
     hasTable = create_temp_table(tbl, mycursor)
@@ -214,10 +248,12 @@ def load_values(m_id, data_file, mycursor):
     drop_tmp_table(mycursor, tbl)
     return True
 
-# Create temporary table with name TABLE_NAME to hold timestamp, reading data 
-# in the data file currently being processed.
-# Returns TRUE if successful, FALSE otherwise. Uses cursor MYCURSOR.
 def create_temp_table(table_name, mycursor):
+    """
+    Create temporary table with name TABLE_NAME to hold timestamp, reading data 
+    in the data file currently being processed.
+    Returns TRUE if successful, FALSE otherwise. Uses cursor MYCURSOR.
+    """
     print("Creating temporary table '%s' ..." % (table_name)),
     sql = """
         CREATE TABLE IF NOT EXISTS %s
@@ -235,9 +271,11 @@ def create_temp_table(table_name, mycursor):
         print(create_tbl_err)
         return False
     
-# Copy the data contents of DATA_FILE to temporary table TABLE.
-# Returns TRUE if successful, FALSE otherwise. Uses cursor MYCURSOR.
 def copy_data(data_file, table, mycursor):
+    """
+    Copy the data contents of DATA_FILE to temporary table TABLE.
+    Returns TRUE if successful, FALSE otherwise. Uses cursor MYCURSOR.
+    """
     print("Copying data to temporary table '%s' ..." % (table)),
     sql = """
         COPY %s
@@ -258,9 +296,11 @@ def copy_data(data_file, table, mycursor):
         print(copy_err)
         return False
 
-# Add a 'id' column with default value M_ID to table TABLE using cursor
-# MYCURSOR. Returns TRUE if successful, FALSE otherwise.
 def add_id_col(m_id, table, mycursor):
+    """
+    Add a 'id' column with default value M_ID to table TABLE using cursor
+    MYCURSOR. Returns TRUE if successful, FALSE otherwise.
+    """
     print("Adding column to table '%s' with id value %d ..." % (table, m_id)),
     sql = "ALTER TABLE %s ADD COLUMN id INTEGER DEFAULT %d" % (table, m_id)
     try:
@@ -272,9 +312,11 @@ def add_id_col(m_id, table, mycursor):
         print(add_col_err)
         return False
 
-# Insert the contents of table TABLE into 'meter_value' using cursor MYCURSOR.
-# Returns TRUE if successful, FALSE otherwise.
 def insert_table(table, mycursor):
+    """
+    Insert the contents of table TABLE into 'meter_value' using cursor MYCURSOR.
+    Returns TRUE if successful, FALSE otherwise.
+    """
     print("Inserting readings into 'meter_value' table ..."),
     sql = """
         INSERT INTO meter_value (meter_id, time_stamp_utc, reading)
@@ -289,10 +331,10 @@ def insert_table(table, mycursor):
         print(insert_table_err)
         return False
 
-
-
-# Usage file
 def usage():
+    """
+    Print usage message.
+    """
     print("\nUSAGE: python load_data_files.py [DIRECTORIES] ")
     print("\nDESCRIPTION:")
     print("\tLoads meter data files in a data directory into the energy")
@@ -347,7 +389,6 @@ def main():
     cursor = cnxn.cursor()
     load_files(data_files, cursor, processed_dir)
     close_cnxn(cursor, cnxn)
-
 
 if __name__ == "__main__":
     main()

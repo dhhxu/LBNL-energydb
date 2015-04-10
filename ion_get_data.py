@@ -1,33 +1,44 @@
 #!/usr/bin/python
 
-import pyodbc, os, csv, sys
+import pyodbc
+import os
+import csv
+import sys
 
 #variables
-db = "ion"
-user = "EETD"
-passwd = os.getenv('KFAIONPASS')
+DB = "ion"
+USER = "EETD"
+PASSWD = os.getenv('KFAIONPASS')
 
 # directory where meter data files are saved to.
-data_output_file_path = "/home/danielxu/data/data_files/"
+DATA_OUTPUT_FILE_PATH = "/home/danielxu/data/data_files/"
 
 # default meter info file header length
 DEFAULT_LINE_LEN = 4
 
-# Print 'done'
 def done():
+    """
+    Print 'done'
+    """
     print("done")
 
-# Print 'FAIL'
 def fail():
+    """
+    Print 'FAIL'
+    """
     print("FAIL")
 
-# Print a message indicating program is skipping over current Source ID and
-# going to the next one (due to some error).
 def tryNext():
+    """
+    Print a message indicating program is skipping over current Source ID and
+    going to the next one (due to some error).
+    """
     print("Going to next Source ID in input file ...")
 
-# Close connection MY_CNXN, delete and close cursor MY_CURSOR.
 def close_cnxn(my_cursor, my_cnxn):
+    """
+    Close connection MY_CNXN, delete and close cursor MY_CURSOR.
+    """
     print("Closing cursor ..."),
     my_cursor.close()
     done()
@@ -38,14 +49,18 @@ def close_cnxn(my_cursor, my_cnxn):
     my_cnxn.close()
     done()
 
-# Abort -- close connection MY_CNXN, delete and close cursor MY_CURSOR,
-# and exit the script.
 def abort(my_cursor, my_cnxn):
+    """
+    Abort -- close connection MY_CNXN, delete and close cursor MY_CURSOR,
+    and exit the script.
+    """
     close_cnxn(my_cursor, my_cnxn)
     exit()
 
-# Returns TRUE if LINE is a correct header.
 def hasHeader(line):
+    """
+    Returns TRUE if LINE is a correct header.
+    """
     line_len = len(line)
     if (line_len != DEFAULT_LINE_LEN):
         return False
@@ -56,9 +71,11 @@ def hasHeader(line):
         else:
             return True
 
-# Returns a list of meter information. EXTRACT_FILE must have a header row
-# for this to work.
 def get_meter_list(extract_file):
+    """
+    Returns a list of meter information. EXTRACT_FILE must have a header row
+    for this to work.
+    """
     with open(extract_file, "rb") as extract_info_file:
         reader = csv.reader(extract_info_file)
         meter_list = [ row for row in reader ]
@@ -67,15 +84,17 @@ def get_meter_list(extract_file):
         del meter_list[0]
         return meter_list
 
-# Extract meter reading data from the database as .csv files. The meters are
-# from the EXTRACT_FILE.
-# Also collects and writes meter metadata to a meter information file that
-# will be used to import the data into the central database.
 def extract_meter_data( extract_file ):
+    """
+    Extract meter reading data from the database as .csv files. The meters are
+    from the EXTRACT_FILE.
+    Also collects and writes meter metadata to a meter information file that
+    will be used to import the data into the central database.
+    """
     try:
-        print("Using database '%s':" % (db.upper()))
+        print("Using database '%s':" % (DB.upper()))
         print("Connecting to database ..."),
-        cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (db, user, passwd)
+        cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (DB, USER, PASSWD)
         cnxn = pyodbc.connect(cnxn_str)
         done()
     except pyodbc.Error, connect_err:
@@ -102,11 +121,13 @@ def extract_meter_data( extract_file ):
         print("%d of %d IDs failed to process" % (err_count, total))
     close_cnxn(cursor, cnxn)
 
-# Extract reading data for the meter described in MTR_ROW to a csv file in the
-# following format:    ION_meterID_start_end.csv
-# This method will write the information necessary to import the reading into
-# the database to the header of the files above.
 def extract(mtr_row, my_cursor, my_cnxn):
+    """
+    Extract reading data for the meter described in MTR_ROW to a csv file in the
+    following format:    ION_meterID_start_end.csv
+    This method will write the information necessary to import the reading into
+    the database to the header of the files above.
+    """
     meter_id = int(mtr_row[0])
     quantity_id = int(mtr_row[1])
     start = mtr_row[2]
@@ -135,13 +156,13 @@ def extract(mtr_row, my_cursor, my_cnxn):
         tryNext()
         return 1
 
-    output_filename = (db.upper() + "_" + str(meter_id) + "_"
+    output_filename = (DB.upper() + "_" + str(meter_id) + "_"
         + start + "_" + end + ".csv")
-    output_path = data_output_file_path + output_filename
+    output_path = DATA_OUTPUT_FILE_PATH + output_filename
 
     with open(output_path, "wb") as output_file:
         writer = csv.writer(output_file, delimiter=',')
-        header = [description, unit, commodity, db.upper(), reading_type]
+        header = [description, unit, commodity, DB.upper(), reading_type]
         writer.writerow(header)
         for row in my_cursor:
             writer.writerow(["NULL" if r is None else r for r in row])
@@ -149,10 +170,12 @@ def extract(mtr_row, my_cursor, my_cnxn):
     print("Processing finished.\n")
     return 0
 
-# Returns the string containing the meter description corresponding to METER_ID
-# or None if no description can be found or an error occurs. Uses cursor
-# MY_CURSOR
 def get_description(meter_id, my_cursor):
+    """
+    Returns the string containing the meter description corresponding to METER_ID
+    or None if no description can be found or an error occurs. Uses cursor
+    MY_CURSOR
+    """
     get_description_sql = """
         SELECT TOP 1 Name FROM Source WHERE ID = %d
     """ % (meter_id)
@@ -172,9 +195,11 @@ def get_description(meter_id, my_cursor):
         done()
         return description_result.Name
 
-# Returns the string containing the quantity name for QUANTITY_ID, or None if
-# the name cannot be found. Uses cursor MY_CURSOR.
 def get_quantity_name(quantity_id, my_cursor):
+    """
+    Returns the string containing the quantity name for QUANTITY_ID, or None if
+    the name cannot be found. Uses cursor MY_CURSOR.
+    """
     get_quantity_name_sql = """
         SELECT TOP 1 Name FROM Quantity WHERE ID = %d
     """ % (quantity_id)
@@ -190,9 +215,11 @@ def get_quantity_name(quantity_id, my_cursor):
     else:
         return quantity_result.Name.lower() 
 
-# Returns the unit string corresponding to QUANTITY_NAME, or None if an error
-# occurs during name extraction.
 def get_unit(quantity_name):
+    """
+    Returns the unit string corresponding to QUANTITY_NAME, or None if an error
+    occurs during name extraction.
+    """
     if (quantity_name is None):
         return None
     else:
@@ -204,18 +231,22 @@ def get_unit(quantity_name):
             unit = "unknown"
         return unit
 
-# Return the commodity corresponding to UNIT, or NONE if it cannot be found.
 def get_commodity(unit):
+    """
+    Return the commodity corresponding to UNIT, or NONE if it cannot be found.
+    """
     if (unit == "kW" or unit == "kWh"):
         commodity = "Electricity"
     else:
         return None
     return commodity
 
-# Return the reading type for meter METER_ID with quantity id QUANTITY_ID
-# between START_DATE and END_DATE (Totalization, Interval) or NONE if an error
-# occurs. Uses cursor MY_CURSOR.
 def get_reading_type(meter_id, quantity_id, start_date, end_date, my_cursor):
+    """
+    Return the reading type for meter METER_ID with quantity id QUANTITY_ID
+    between START_DATE and END_DATE (Totalization, Interval) or NONE if an error
+    occurs. Uses cursor MY_CURSOR.
+    """
     monotonic_sql = """
         SELECT
             CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END
@@ -257,10 +288,12 @@ def get_reading_type(meter_id, quantity_id, start_date, end_date, my_cursor):
     done()
     return reading_type
 
-# Run the SQL to get readings for meter METER_ID with QUANTITY_ID between
-# START_DATE and END_DATE. Return TRUE if successful, FALSE otherwise.
-# The readings are stored in MY_CURSOR for later iteration.
 def get_readings(meter_id, quantity_id, start_date, end_date):
+    """
+    Run the SQL to get readings for meter METER_ID with QUANTITY_ID between
+    START_DATE and END_DATE. Return TRUE if successful, FALSE otherwise.
+    The readings are stored in MY_CURSOR for later iteration.
+    """
     get_data_sql = """
         SELECT TimestampUTC, Value
         FROM DataLog2
@@ -280,8 +313,10 @@ def get_readings(meter_id, quantity_id, start_date, end_date):
         print(get_data_err)
         return False
 
-# Usage message.
 def usage():
+    """
+    Usage message.
+    """
     print("\nUsage: python %s [ FILE.csv ]" % (sys.argv[0]))
     print("    -- FILE.csv contains a list of ION meter information needed ")
     print("       to extract reading data from the ION datasource\n")
@@ -293,7 +328,6 @@ def usage():
         "above")
     print
 
-# Handle script execution.
 def main():
     arg_len = len(sys.argv)
     if (arg_len != 2):

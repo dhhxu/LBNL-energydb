@@ -1,19 +1,32 @@
-import pyodbc, sys, os, csv, shutil
+import pyodbc
+import sys
+import os
+import csv
+import shutil
 
 db = "energydb"
 user = "danielxu"
 pwd = os.getenv('ENERGYDBPASS')
 
 # DEFAULT file paths
-default_data_file_path = "/home/danielxu/data/data_files/"
+DEFAULT_DATA_FILE_PATH = "/home/danielxu/data/data_files/"
 
 def done():
+    """
+    Prints 'done'
+    """
     print("done")
 
 def fail():
+    """
+    Prints 'FAIL'
+    """
     print("FAIL")
 
 def close_cnxn(my_cursor, my_cnxn):
+    """
+    Performs cleanup of the database connection.
+    """
     print("Closing cursor ...")
     my_cursor.close()
     done()
@@ -24,8 +37,11 @@ def close_cnxn(my_cursor, my_cnxn):
     my_cnxn.close()
     done()
 
-# Returns a list of data files in the info file located at SRC_METER_FILE_PATH.
 def get_info_file_list( src_meter_file_path ):
+    """
+    Returns a list of data files in the info file located at 
+    SRC_METER_FILE_PATH.
+    """
     try:
         f = open(src_meter_file_path, 'rb')
         reader = csv.reader(f)
@@ -37,10 +53,12 @@ def get_info_file_list( src_meter_file_path ):
         print(file_not_found)
         exit()
 
-# Returns True if the data files in DATA_FILE_DIR_PATH are accounted for in
-# the info file list INFO_FILE_LIST.
-# NOTE: data file names MUST be unique!
 def exists_data_files( data_file_dir_path, info_file_list ):
+    """
+    Returns True if the data files in DATA_FILE_DIR_PATH are accounted for in
+    the info file list INFO_FILE_LIST.
+    NOTE: data file names MUST be unique!
+    """
     data_files = [ f for f in os.listdir(data_file_dir_path)
         if os.path.isfile(os.path.join(data_file_dir_path, f)) ]
     if (set(info_file_list) != set(data_files)):
@@ -87,8 +105,10 @@ def load( meter, info_file_path, data_file ):
 def dummy():
     print(sys.argv[1])
 
-# Move the file from SRC to DST. 
 def move(src, dst):
+    """
+    Move the file from SRC to DST. 
+    """
     print("Moving '%s' ..." % (src)),
     try:
         shutil.move(src, dst) 
@@ -98,8 +118,10 @@ def move(src, dst):
         print(missing_file_err)
 
     
-# Usage message.
 def usage():
+    """
+    Usage message.
+    """
     print("\nUsage: python %s [ FILE ]" % (sys.argv[0]))
     print("\t-- FILE contains meter information as well as the file name of" \
         "the corresponding data file")
@@ -119,11 +141,11 @@ def main():
 
     print("Using meter info file: '%s'\n" % (meter_info_file_path))
     info_file_list = get_info_file_list( meter_info_file_path )
-    check = exists_data_files( default_data_file_path,
+    check = exists_data_files( DEFAULT_DATA_FILE_PATH,
         info_file_list )
     if (check):
         print "same"
-        load_all_meter_data( info_file_list, default_data_file_path )
+        load_all_meter_data( info_file_list, DEFAULT_DATA_FILE_PATH )
         dummy()
     else:
         print "not same"

@@ -22,10 +22,13 @@ def main():
     #print(my_sql)
     cursor.execute(my_sql)
 
-    with open("ion_sql_output.csv", "wb") as f:
-        writer = csv.writer(f)
-        for r in cursor:
-            writer.writerow(r)
+    if (cursor):
+        with open("ion_sql_output.csv", "wb") as f:
+            writer = csv.writer(f)
+            for r in cursor:
+                writer.writerow(r)
+    else:
+        print("SQL query returned no results.\n")
     cursor.close()
     del cursor
     cnxn.close()

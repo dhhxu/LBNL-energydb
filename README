@@ -44,7 +44,7 @@ OTHER SCRIPTS:
 
     DESCRIPTION:
     Both scripts simply run the SQL in an input file on the corresponding
-    database. The path to the SQL file musts be specified. Generally, the
+    database. The path to the SQL file must be specified. Generally, the
     SQLs are located in the ~/sql directory
 
 
