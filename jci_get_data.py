@@ -4,23 +4,22 @@ import pyodbc
 import sys
 import util
 
-db = util.METASYS_DB
-user = util.METASYS_USER
-passwd = util.METASYS_PWD
+DB = util.METASYS_DB
+USER = util.METASYS_USER
+PASSWD = util.METASYS_PWD
 
 def hasHeader(line):
     """
     Returns TRUE if LINE is a correct header.
     """
-    line_len = len(line)
-    if (line_len != util.DEFAULT_LINE_LEN):
+    if len(line) != util.DEFAULT_LINE_LEN:
         return False
-    else:
-        if (line[0] != "SourceID" or line[1] != "start_date"
-            or line[2] != "end_date" or line[3] != "unit"):
-            return False
-        else:
-            return True
+    
+    if (line[0] != "SourceID" or line[1] != "start_date"
+        or line[2] != "end_date" or line[3] != "unit"):
+        return False
+    
+    return True
 
 def get_meter_list(extract_file):
     """
@@ -44,9 +43,9 @@ def extract_meter_data(extract_file):
     will be used to import the data into the central database.
     """
     try:
-        print("Using database '%s':" % (db.upper()))
+        print("Using database '%s':" % (DB.upper()))
         print("Connecting to database ..."),
-        cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (db, user, passwd)
+        cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (DB, USER, PASSWD)
         cnxn = pyodbc.connect(cnxn_str)
         util.done()
     except pyodbc.Error, connect_err:
@@ -63,14 +62,13 @@ def extract_meter_data(extract_file):
 
     print("Begin data extraction ...\n")
     err_count = 0
-    total = len(meter_list)
     for meter_row in meter_list:
         err_count += extract(meter_row, cursor)
     print("\nExtraction finished.")
-    if (err_count == 0):
+    if err_count == 0:
         print("No errors encountered.")
     else:
-        print("%d of %d IDs failed to process" % (err_count, total))
+        print("%d of %d IDs failed to process" % (err_count, len(meter_list)))
     util.close_cnxn(cursor, cnxn)
 
 def extract(mtr_row, my_cursor):
@@ -96,8 +94,7 @@ def extract(mtr_row, my_cursor):
         util.tryNext()
         return 1
 
-    output_filename = ("JCI_" + str(meter_id) + "_"
-        + start + "_" + end + ".csv")
+    output_filename = "JCI_%s_%s_%s.csv" % (str(meter_id), start, end)
     output_path = util.DATA_OUTPUT_FILE_PATH + output_filename
 
     with open(output_path, "wb") as output_file:
@@ -119,7 +116,9 @@ def get_description(meter_id, my_cursor):
     get_description_sql = """
         SELECT TOP 1 PointName FROM tblPoint WHERE PointID = %d
     """ % (meter_id)
+
     print("Getting meter name ..."),
+    
     try:
         my_cursor.execute(get_description_sql)
     except pyodbc.Error, meter_name_err:
@@ -148,7 +147,9 @@ def get_reading_type(meter_id, my_cursor, start_date, end_date):
         AND UTCDateTime < CAST('%s' AS datetime)
         ORDER BY UTCDateTime ASC
     """ % (meter_id, start_date, end_date)
+
     print("Getting reading type ..."),
+
     try:
         my_cursor.execute(check_sql)
     except pyodbc.Error, monotonic_err:
@@ -170,7 +171,7 @@ def isMonotonic(my_cursor):
     are totalized (i.e. monotonic), FALSE if values are in interval form.
     """
     first = my_cursor.fetchone()
-    if (not first):
+    if not first:
         util.fail()
         raise ValueError("ERROR: No meter values found in input date range")
     else:
