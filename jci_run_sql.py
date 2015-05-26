@@ -1,13 +1,11 @@
-#!/usr/bin/env python
-
 """
 Runs the SQL query from a user-supplied input file on the JCI database and
 prints the results.
 """
 
+import os
 import pyodbc
 import sys
-import os
 import util
 
 db = util.METASYS_DB

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Loads the energy data csv files acquired through the loader scripts
 (ion_get_data.py or jci_get_data.py), and inserts them into the Postgres

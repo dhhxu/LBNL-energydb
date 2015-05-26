@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """
 Takes an input file (details in usage()) containing information about what
 energy data is requested and pulls that data from the ION database. The
