@@ -10,9 +10,9 @@ import pyodbc
 import sys
 import util
 
-db = util.PG_DB
-user = util.PG_USER
-pwd = uti.PG_PWD
+DB = util.PG_DB
+USER = util.PG_USER
+PWD = uti.PG_PWD
 
 # Default data directory if none is supplied at script invocation.
 DEFAULT_DATA_DIR = util.DATA_OUTPUT_FILE_PATH
@@ -59,7 +59,7 @@ def get_header(data_file):
     with open(data_file, "rb") as f:
         reader = csv.reader(f)
         header = reader.next()
-        if (len(header) != 5):
+        if len(header) != 5:
             raise ValueError("Incorrect file header")
         return header
 
@@ -69,7 +69,6 @@ def load_files(file_list, mycursor, process_dir):
     Data files are moved to PROCESS_DIR if they are
     loaded successfully.
     """
-    file_count = len(file_list)
     err_count = 0
     for f in file_list:
         print("Processing file '%s'" % (f))
@@ -79,7 +78,7 @@ def load_files(file_list, mycursor, process_dir):
         print("All files loaded into database.")
     else:
         print("%d of %d files could not be loaded into the database\n"
-                % (err_count, file_count))
+                % (err_count, len(file_list)))
 
 def load(data_file, mycursor, process_dir):
     """
@@ -126,8 +125,7 @@ def load(data_file, mycursor, process_dir):
         return 1
     print("Meter ID: %d" % (meter_id))
 
-    valuesLoaded = load_values(meter_id, data_file, mycursor)
-    if (not valuesLoaded):
+    if not load_values(meter_id, data_file, mycursor):
         print("NOTE! Meter ID (%d) created for '%s'" % (meter_id, data_file))
         return 1
     else:
@@ -139,11 +137,13 @@ def get_id(item, table, field, mycursor):
     Returns the ID from table TABLE whose FIELD is "ilike" to ITEM. Uses
     cursor MYCURSOR. If no ID is found, returns -1.
     """
-    sql = "SELECT id FROM %s WHERE %s ILIKE '%s' LIMIT 1" % (table, field, item) 
+    sql = "SELECT id FROM %s WHERE %s ILIKE '%s' LIMIT 1" % (table, field, item)
+
     print("Getting %s ID ..." % (table)),
+    
     mycursor.execute(sql)
     result = mycursor.fetchone()
-    if (not result):
+    if not result:
         util.fail()
         return -1
     else:
@@ -170,7 +170,9 @@ def load_ids(id_list, mycursor):
         VALUES      ('%s', %d, %d, %d, %d)
         RETURNING   id
     """ % (id_list[0], id_list[1], id_list[2], id_list[3], id_list[4])
+
     print("Inserting ID's into 'meter' table ..."),
+    
     try:
         exec_and_commit(mycursor, sql)
         result = mycursor.fetchone()
@@ -187,21 +189,18 @@ def load_values(m_id, data_file, mycursor):
     meter with id M_ID. Returns TRUE if successful, FALSE otherwise.
     Uses cursor MYCURSOR.
     """
+    
     print("Begin inserting readings into 'meter_value' table ...\n")
     tbl = "tmp_%d" % (m_id)
-    hasTable = create_temp_table(tbl, mycursor)
-    if (not hasTable):
+    if not create_temp_table(tbl, mycursor):
         return False
-    isCopied = copy_data(data_file, tbl, mycursor)
-    if (not isCopied):
+    if not copy_data(data_file, tbl, mycursor):
         drop_tmp_table(mycursor, tbl)
         return False
-    hasCol = add_id_col(m_id, tbl, mycursor) 
-    if (not hasCol):
+    if not add_id_col(m_id, tbl, mycursor):
         drop_tmp_table(mycursor, tbl)
         return False
-    isLoaded = insert_table(tbl, mycursor)
-    if (not isLoaded):
+    if not insert_table(tbl, mycursor):
         drop_tmp_table(mycursor, tbl)
         return False
 
@@ -215,7 +214,6 @@ def create_temp_table(table_name, mycursor):
     in the data file currently being processed.
     Returns TRUE if successful, FALSE otherwise. Uses cursor MYCURSOR.
     """
-    print("Creating temporary table '%s' ..." % (table_name)),
     sql = """
         CREATE TABLE IF NOT EXISTS %s
         (
@@ -223,6 +221,9 @@ def create_temp_table(table_name, mycursor):
             reading         NUMERIC
         )
     """ % (table_name)
+
+    print("Creating temporary table '%s' ..." % (table_name)),
+
     try:
         exec_and_commit(mycursor, sql)
         util.done()
@@ -237,7 +238,6 @@ def copy_data(data_file, table, mycursor):
     Copy the data contents of DATA_FILE to temporary table TABLE.
     Returns TRUE if successful, FALSE otherwise. Uses cursor MYCURSOR.
     """
-    print("Copying data to temporary table '%s' ..." % (table)),
     sql = """
         COPY %s
         (
@@ -248,6 +248,9 @@ def copy_data(data_file, table, mycursor):
         NULL AS 'Null'
         CSV HEADER
     """ % (table, data_file)
+
+    print("Copying data to temporary table '%s' ..." % (table)),
+    
     try:
         exec_and_commit(mycursor, sql)
         util.done()
@@ -262,8 +265,10 @@ def add_id_col(m_id, table, mycursor):
     Add a 'id' column with default value M_ID to table TABLE using cursor
     MYCURSOR. Returns TRUE if successful, FALSE otherwise.
     """
-    print("Adding column to table '%s' with id value %d ..." % (table, m_id)),
     sql = "ALTER TABLE %s ADD COLUMN id INTEGER DEFAULT %d" % (table, m_id)
+    
+    print("Adding column to table '%s' with id value %d ..." % (table, m_id)),
+
     try:
         exec_and_commit(mycursor, sql)
         util.done()
@@ -278,11 +283,13 @@ def insert_table(table, mycursor):
     Insert the contents of table TABLE into 'meter_value' using cursor MYCURSOR.
     Returns TRUE if successful, FALSE otherwise.
     """
-    print("Inserting readings into 'meter_value' table ..."),
     sql = """
         INSERT INTO meter_value (meter_id, time_stamp_utc, reading)
         SELECT id, time_stamp_utc, reading FROM %s
     """ % (table)
+
+    print("Inserting readings into 'meter_value' table ..."),
+    
     try:
         exec_and_commit(mycursor, sql)
         util.done()
@@ -339,7 +346,7 @@ def main():
         exit()
     data_files = get_data_files(data_dir)
     try:
-        cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (db, user, pwd)
+        cnxn_str = "DSN=%s;UID=%s;PWD=%s" % (DB, USER, PWD)
         print("Connecting to database ..."),
         cnxn = pyodbc.connect(cnxn_str)
         util.done()
