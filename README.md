@@ -1,10 +1,10 @@
-#LBNL Building Energy Database Project
+# LBNL Building Energy Database Project
 
-**Script directory:** ~/scripts
+**Script directory:** `~/scripts`
 
-**Data directory:** ~/data
+**Data directory:** `~/data`
 
-##Main scripts:
+## Main scripts
 
 1. `ion_get_data.py` (getter)
 
@@ -22,7 +22,7 @@
    Postgres database holding building energy data. Note that the extracted
    data is of a specific format independent of database source.
 
-###Usage:
+### Usage
 
 Run the getter script(s) to get desired data. Next run the loader script
 to import the extracted data into the Postgres database.
@@ -38,21 +38,30 @@ Example usage:
 
 `load_data_files.py` (using default arguments)
 
+### Details/Caveats
+
+The loader script assumes that the Postgres database has been set up
+beforehand. A PDF of the database schema can be found in `schema.pdf`
+
+Both getter scripts (as well as the below scripts) require login privileges
+to access the ION and JCI databases. Similarly, the loader script requires
+login and admin privileges to access and modify the Postgres database.
+
 ---
-## Other scripts:
+## Other scripts
 
 * `ion_run_sql.py`
 * `jci_run_sql.py`
 
-###Description:
+### Description
 
 Both scripts simply run a SQL statement contained in an input file on the
 corresponding database. The full path to the SQL file must be specified.
-Generally, the input files are located in the ~/sql directory.
+Generally, the input files are located in the `~/sql` directory.
 
-Example usage: 
+Example usage
 
 `python ion_run_sql.py YOUR_SQL_FILE.sql`
 
 
-**Last updated:** 2015-04-10
+**Last updated:** 2015-05-26
