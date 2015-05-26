@@ -21,12 +21,12 @@ def hasHeader(line):
     line_len = len(line)
     if (line_len != util.DEFAULT_LINE_LEN):
         return False
-    else:
-        if (line[0] != "SourceID" or line[1] != "QuantityID"
-            or line[2] != "start_date" or line[3] != "end_date"):
-            return False
-        else:
-            return True
+
+    if (line[0] != "SourceID" or line[1] != "QuantityID"
+        or line[2] != "start_date" or line[3] != "end_date"):
+        return False
+
+    return True
 
 def get_meter_list(extract_file):
     """
@@ -36,12 +36,12 @@ def get_meter_list(extract_file):
     with open(extract_file, "rb") as extract_info_file:
         reader = csv.reader(extract_info_file)
         meter_list = [ row for row in reader ]
-        if (not hasHeader(meter_list[0])):
+        if not hasHeader(meter_list[0]):
             raise ValueError("ERROR: Incorrect/Missing header.\n")
         del meter_list[0]
         return meter_list
 
-def extract_meter_data( extract_file ):
+def extract_meter_data(extract_file):
     """
     Extract meter reading data from the database as .csv files. The meters are
     from the EXTRACT_FILE.
@@ -68,20 +68,22 @@ def extract_meter_data( extract_file ):
     
     print("Begin data extraction ...\n")
     err_count = 0
-    total = len(meter_list)
     for meter_row in meter_list:
         err_count += extract(meter_row, cursor, cnxn)
     print("\nExtraction finished.")
     if (err_count == 0):
         print("No errors encountered.")
     else:
-        print("%d of %d IDs failed to process" % (err_count, total))
+        print("%d of %d IDs failed to process" % (err_count, len(meter_list)))
     util.close_cnxn(cursor, cnxn)
 
 def extract(mtr_row, my_cursor, my_cnxn):
     """
     Extract reading data for the meter described in MTR_ROW to a csv file in the
-    following format:    ION_meterID_start_end.csv
+    following format:
+        
+        ION_meterID_start_end.csv
+
     This method will write the information necessary to import the reading into
     the database to the header of the files above.
     """
@@ -101,9 +103,7 @@ def extract(mtr_row, my_cursor, my_cnxn):
         util.tryNext()
         return 1
 
-    output_filename = (DB.upper() + "_" + str(meter_id) + "_"
-        + start + "_" + end + ".csv")
-
+    output_filename = "%s_%s_%s_%s.csv" % (DB.upper(), str(meter_id), start, end)
     output_path = util.DATA_OUTPUT_FILE_PATH + output_filename
 
     with open(output_path, "wb") as output_file:
@@ -120,7 +120,7 @@ def get_description(meter_id, my_cursor):
     """
     Returns the string containing the meter description corresponding to METER_ID
     or None if no description can be found or an error occurs. Uses cursor
-    MY_CURSOR
+    MY_CURSOR.
     """
     get_description_sql = """
         SELECT TOP 1 Name FROM Source WHERE ID = %d
@@ -135,7 +135,7 @@ def get_description(meter_id, my_cursor):
     description_result = my_cursor.fetchone()
     if (not description_result):
         util.fail()
-        print("ERROR! Description not found!")
+        print("[ERROR] Description not found!")
         return None
     else:
         util.done()
@@ -156,7 +156,7 @@ def get_quantity_name(quantity_id, my_cursor):
         return None
     quantity_result = my_cursor.fetchone()
     if (not quantity_result):
-        print("ERROR: Quantity ID %d does not exist!" % (quantity_id))
+        print("[ERROR] Quantity ID %d does not exist!" % (quantity_id))
         return None
     else:
         return quantity_result.Name.lower() 
@@ -166,25 +166,25 @@ def get_unit(quantity_name):
     Returns the unit string corresponding to QUANTITY_NAME, or None if an error
     occurs during name extraction.
     """
-    if (quantity_name is None):
+    if not quantity_name:
         return None
+    
+    if ("power" in quantity_name):
+        unit = "kW"
+    elif ("energy" in quantity_name):
+        unit = "kWh"
     else:
-        if ("power" in quantity_name):
-            unit = "kW"
-        elif ("energy" in quantity_name):
-            unit = "kWh"
-        else:
-            unit = "unknown"
-        return unit
+        unit = "unknown"
+    return unit
 
 def get_commodity(unit):
     """
     Return the commodity corresponding to UNIT, or NONE if it cannot be found.
     """
+    commodity = None
     if (unit == "kW" or unit == "kWh"):
         commodity = "Electricity"
-    else:
-        return None
+
     return commodity
 
 def get_reading_type(meter_id, quantity_id, start_date, end_date, my_cursor):

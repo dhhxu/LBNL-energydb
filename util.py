@@ -27,8 +27,6 @@ DATA_OUTPUT_FILE_PATH = "/home/danielxu/data/data_files/"
 # Default meter info file header length
 DEFAULT_LINE_LEN = 4
 
-
-
 def done():
     """
     Print 'done'
